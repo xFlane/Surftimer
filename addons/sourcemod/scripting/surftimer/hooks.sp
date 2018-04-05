@@ -451,6 +451,9 @@ public Action Say_Hook(int client, const char[] command, int argc)
 		if (StrContains(sText, "!", false) == 0)
 		return Plugin_Handled;
 
+		return Plugin_Continue; // let another plugins to handle this chat message.
+		
+		/*
 		// Chat Trigger?
 		if ((IsChatTrigger() && sText[0] == '/') || (sText[0] == '@' && (GetUserFlagBits(client) & ADMFLAG_ROOT || GetUserFlagBits(client) & ADMFLAG_GENERIC)))
 		{
@@ -515,6 +518,7 @@ public Action Say_Hook(int client, const char[] command, int argc)
 				}
 			}
 		}
+		*/
 	}
 	return Plugin_Continue;
 }
