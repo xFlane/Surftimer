@@ -1542,6 +1542,7 @@ char RadioCMDS[][] = 													// Disable radio commands
 #include "surftimer/mapsettings.sp"
 #include "surftimer/cvote.sp"
 #include "surftimer/vip.sp"
+#include "surftimer/tier_preload.sp"
 
 /*====================================
 =               Events               =
@@ -1794,6 +1795,9 @@ public void OnMapStart()
 	// Show Triggers
 	g_iTriggerTransmitCount = 0;
 
+	// Load tiers
+	LoadTiers();
+	
 	// Save Locs
 	ResetSaveLocs();
 }
@@ -2941,6 +2945,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("surftimer_GetMapData", Native_GetMapData);
 	CreateNative("surftimer_GetPlayerData", Native_GetPlayerData);
 	CreateNative("surftimer_GetMapTier", Native_GetMapTier);
+	CreateNative("surftimer_GetMapTier_g", Native_GetMapTier_g);
 	CreateNative("surftimer_GetMapStages", Native_GetMapStages);
 	CreateNative("surftimer_SafeTeleport", Native_SafeTeleport);
 	CreateNative("surftimer_IsClientVip", Native_IsClientVip);
