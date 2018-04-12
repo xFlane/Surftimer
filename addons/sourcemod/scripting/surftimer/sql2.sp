@@ -169,13 +169,17 @@ public void SQL_ViewPlayerPrMaptimeCallback2(Handle owner, Handle hndl, const ch
 
 	int target = g_iPrTarget[client];
 	int stage;
-	int stagerank = 1;
-	int totalcompletes = 1;
+	int stagerank[CPLIMIT];
+	int totalcompletes[CPLIMIT];
 	int totalstages = 0;
 	float stagetime[CPLIMIT];
 
 	for (int i = 1; i < CPLIMIT; i++)
+	{
 		stagetime[i] = -1.0;
+		stagerank[i] = 0;
+		totalcompletes[i] = 0;
+	}
 
 	if (SQL_HasResultSet(hndl))
 	{
@@ -184,8 +188,8 @@ public void SQL_ViewPlayerPrMaptimeCallback2(Handle owner, Handle hndl, const ch
 			totalstages++;
 			stage = SQL_FetchInt(hndl, 4);
 			stagetime[stage] = SQL_FetchFloat(hndl, 3);
-			stagerank = SQL_FetchInt(hndl, 5);
-			totalcompletes = SQL_FetchInt(hndl, 6);
+			stagerank[stage] = SQL_FetchInt(hndl, 5);
+			totalcompletes[stage] = SQL_FetchInt(hndl, 6);
 		}
 	}
 
@@ -215,7 +219,11 @@ public void SQL_ViewPlayerPrMaptimeCallback2(Handle owner, Handle hndl, const ch
 	if (StrEqual(szMapName, g_szMapName))
 	{
 		g_totalBonusesPr[client] = g_mapZoneGroupCount;
-		g_totalStagesPr[client] = g_TotalStages;
+
+		if (g_bhasStages)
+			g_totalStagesPr[client] = g_TotalStages;
+		else
+			g_totalStagesPr[client] = 0;
 	}
 
 	if (g_totalStagesPr[client] > 0)
@@ -225,7 +233,7 @@ public void SQL_ViewPlayerPrMaptimeCallback2(Handle owner, Handle hndl, const ch
 			if (stagetime[i] != -1.0)
 			{
 				FormatTimeFloat(0, stagetime[i], 3, szRuntimestages[i], 64);
-				Format(szStageInfo[i], 256, "Stage %i: %s\nRank: %i/%i\n \n", i, szRuntimestages[i], stagerank, totalcompletes);
+				Format(szStageInfo[i], 256, "Stage %i: %s\nRank: %i/%i\n \n", i, szRuntimestages[i], stagerank[i], totalcompletes[i]);
 			}
 			else
 			{
@@ -1052,7 +1060,6 @@ public void SQL_SelectCPRTimeCallback(Handle owner, Handle hndl, const char[] er
 
 		char szQuery[512];
 		Format(szQuery, sizeof(szQuery), "SELECT cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, cp14, cp15, cp16, cp17, cp18, cp19, cp20, cp21, cp22, cp23, cp24, cp25, cp26, cp27, cp28, cp29, cp30, cp31, cp32, cp33, cp34, cp35 FROM ck_checkpoints WHERE steamid = '%s' AND mapname LIKE '%c%s%c' AND zonegroup = 0;", g_szSteamID[client], PERCENT, g_szCPRMapName[client], PERCENT);
-		CPrintToChat(client, "%s", g_szCPRMapName[client]);
 		SQL_TQuery(g_hDb, SQL_SelectCPRCallback, szQuery, pack, DBPrio_Low);
 	}
 	else
@@ -1081,12 +1088,6 @@ public void SQL_SelectCPRCallback(Handle owner, Handle hndl, const char[] error,
 			g_fClientCPs[client][i] = SQL_FetchFloat(hndl, i - 1);
 		}
 		db_selectCPRTarget(pack);
-	}
-	else
-	{
-		ResetPack(pack);
-		int client = ReadPackCell(pack);
-		CPrintToChat(client, "2", LIMEGREEN, WHITE);
 	}
 }
 
@@ -1128,12 +1129,6 @@ public void SQL_SelectCPRTargetCallback(Handle owner, Handle hndl, const char[] 
 		SQL_FetchString(hndl, 1, g_szTargetCPR[client], sizeof(g_szTargetCPR));
 		g_fTargetTime[client] = SQL_FetchFloat(hndl, 3);
 		db_selectCPRTargetCPs(szSteamId, pack);
-	}
-	else
-	{
-		ResetPack(pack);
-		int client = ReadPackCell(pack);
-		CPrintToChat(client, "3", LIMEGREEN, WHITE);
 	}
 }
 
@@ -1193,12 +1188,7 @@ public void SQL_SelectCPRTargetCPsCallback(Handle owner, Handle hndl, const char
 		SetMenuOptionFlags(menu, MENUFLAG_BUTTON_EXIT);
 		DisplayMenu(menu, client, MENU_TIME_FOREVER);
 	}
-	else
-	{
-		ResetPack(pack);
-		int client = ReadPackCell(pack);
-		CPrintToChat(client, "4", LIMEGREEN, WHITE);
-	}
+
 	CloseHandle(pack);
 }
 

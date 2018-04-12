@@ -184,6 +184,8 @@ public void teleportClient(int client, int zonegroup, int zone, bool stopTime)
 
 	g_bNotTeleporting[client] = false;
 	g_bInJump[client] = false;
+	g_bFirstJump[client] = false;
+	g_bInBhop[client] = false;
 
 	// Check for spawn locations
 	int realZone;
@@ -1246,7 +1248,7 @@ public void LimitSpeed(int client)
 	 * Checkpoint Zone
 	 * Misc Zones
 	*/
-	if (!IsValidClient(client) || !IsPlayerAlive(client) || IsFakeClient(client) || g_bPracticeMode[client] || g_mapZonesTypeCount[g_iClientInZone[client][2]][2] == 0 || g_iClientInZone[client][3] < 0 || g_iClientInZone[client][0] == 2 || g_iClientInZone[client][0] == 4 || g_iClientInZone[client][0] >= 6)
+	if (!IsValidClient(client) || !IsPlayerAlive(client) || IsFakeClient(client) || g_bPracticeMode[client] || g_mapZonesTypeCount[g_iClientInZone[client][2]][2] == 0 || g_iClientInZone[client][3] < 0 || g_iClientInZone[client][0] == 2 || g_iClientInZone[client][0] == 4 || g_iClientInZone[client][0] >= 6 || GetConVarInt(g_hLimitSpeedType) == 1)
 		return;
 
 	float speedCap = 0.0, CurVelVec[3];
@@ -1278,6 +1280,49 @@ public void LimitSpeed(int client)
 		// CPrintToChat(client, "Limited speed");
 		TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, CurVelVec);
 		//TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, CurVelVec);
+	}
+}
+
+public void LimitSpeedNew(int client)
+{
+	if (!IsValidClient(client) || !IsPlayerAlive(client) || IsFakeClient(client) || g_bPracticeMode[client] || g_mapZonesTypeCount[g_iClientInZone[client][2]][2] == 0 || g_iClientInZone[client][3] < 0 || g_iClientInZone[client][0] == 2 || g_iClientInZone[client][0] == 4 || g_iClientInZone[client][0] >= 6 || GetConVarInt(g_hLimitSpeedType) == 0)
+		return;
+	
+	if (GetConVarInt(g_hLimitSpeedType) == 0 || !g_bInStartZone[client] && !g_bInStageZone[client])
+		return;
+
+	// Check if the map has zones
+	if (g_mapZonesCount <= 0)
+		return;
+	
+	float speedCap = 0.0;
+	speedCap = g_mapZones[g_iClientInZone[client][3]][preSpeed];
+
+	if (GetEntityFlags(client) & FL_ONGROUND || speedCap == 0.0)
+	{
+		return;
+	}
+
+	float fVel[3];
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel);
+	// Determine how much each vector must be scaled for the magnitude to equal the limit
+    // scale = limit / (vx^2 + vy^2)^0.5)
+    // Derived from Pythagorean theorem, where the hypotenuse represents the magnitude of velocity,
+    // and the two legs represent the x and y velocity components.
+    // As a side effect, velocity component signs are also handled.
+	float scale = FloatDiv(speedCap, SquareRoot( FloatAdd( Pow(fVel[0], 2.0), Pow(fVel[1], 2.0) ) ) );
+
+	 // A scale < 1 indicates a magnitude > limit
+	if (scale < 1.0)
+	{
+		// Reduce each vector by the appropriate amount
+		float speed = SquareRoot(Pow(fVel[0], 2.0) + Pow(fVel[1], 2.0));
+		fVel[0] = FloatMul(fVel[0], scale);
+		fVel[1] = FloatMul(fVel[1], scale);
+
+		// Impart new velocity onto player
+		if (g_bInBhop[client] || (speedCap == 250.0 && speed >= 500.0))
+			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVel);
 	}
 }
 
@@ -1485,6 +1530,9 @@ public void SetClientDefaults(int client)
 	// Set default stage maybe
 	for (int i = 0; i < MAXZONEGROUPS; i++)
 		g_Stage[i][client] = 1;
+	
+	g_bInBhop[client] = false;
+	g_bInTelehop[client] = false;
 }
 
 // public void clearPlayerCheckPoints(int client)
@@ -1729,7 +1777,7 @@ public void PrintMapRecords(int client, int type)
 		{
 			if (g_fBonusFastest[i] != 9999999.0) // BONUS
 			{
-				CPrintToChat(client, "%t", "Misc6", g_szChatPrefix, g_szBonusFastest[i], g_szZoneGroupName[i], g_szBonusFastestTime[i], g_szMapName);
+				CPrintToChat(client, "%t", "Misc6", g_szChatPrefix, g_szBonusFastest[i], g_szBonusFastestTime[i], g_szZoneGroupName[i], g_szMapName);
 			}
 		}
 	}
@@ -4128,29 +4176,29 @@ stock void PrintChatBonusStyle (int client, int zGroup, int style, int rank = 0)
 	}
 	if (g_bBonusFirstRecord[client] && g_bBonusSRVRecord[client])
 	{
-		CPrintToChatAll("%t", "Misc37", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup]);
+		CPrintToChatAll("%t", "Misc37", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style]);
 		if (g_tmpBonusCount[zGroup] == 0)
-			CPrintToChatAll("%t", "Misc38", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], g_szFinalTime[client]);
+			CPrintToChatAll("%t", "Misc38", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], g_szFinalTime[client]);
 		else
-			CPrintToChatAll("%t", "Misc39", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], szRecordDiff, g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szFinalTime[client]);
+			CPrintToChatAll("%t", "Misc39", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], szRecordDiff, g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szFinalTime[client]);
 	}
 	if (g_bBonusPBRecord[client] && g_bBonusSRVRecord[client])
 	{
-		CPrintToChatAll("%t", "Misc37", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup]);
-		CPrintToChatAll("%t", "Misc39", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], szRecordDiff, g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szFinalTime[client]);
+		CPrintToChatAll("%t", "Misc37", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style]);
+		CPrintToChatAll("%t", "Misc39", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], szRecordDiff, g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szFinalTime[client]);
 	}
 	if (g_bBonusPBRecord[client] && !g_bBonusSRVRecord[client])
 	{
 		PlayUnstoppableSound(client);
-		CPrintToChatAll("%t", "Misc40", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], g_szBonusTimeDifference[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
+		CPrintToChatAll("%t", "Misc40", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], g_szBonusTimeDifference[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
 	}
 	if (g_bBonusFirstRecord[client] && !g_bBonusSRVRecord[client])
 	{
-		CPrintToChatAll("%t", "Misc41", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
+		CPrintToChatAll("%t", "Misc41", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
 	}
 	if (!g_bBonusSRVRecord[client] && !g_bBonusFirstRecord[client] && !g_bBonusPBRecord[client])
 	{
-		CPrintToChatAll("%t", "Misc42", g_szChatPrefix, szName, g_szStyleRecordPrint[style], g_szZoneGroupName[zGroup], g_szFinalTime[client], g_szBonusTimeDifference[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
+		CPrintToChatAll("%t", "Misc42", g_szChatPrefix, szName, g_szZoneGroupName[zGroup], g_szStyleRecordPrint[style], g_szFinalTime[client], g_szBonusTimeDifference[client], g_StyleMapRankBonus[style][zGroup][client], g_iStyleBonusCount[style][zGroup], g_szStyleBonusFastestTime[style][zGroup]);
 	}
 
 	CheckBonusStyleRanks(client, zGroup, style);
