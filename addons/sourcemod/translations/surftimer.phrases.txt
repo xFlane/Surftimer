@@ -1518,4 +1518,10 @@
 		"#format"	"{1:s},{2:s}"
 		"en"		"{1} {blue}{2} {default}not found"
 	}
+	"TooMuchStageSpeed"
+	{
+		"#format"	"{1:s}"
+		"en"		"{1} Prehopping is not allowed in stage record."
+	}
+
 }
