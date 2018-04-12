@@ -766,7 +766,7 @@ public void LoadBonusReplay()
 		// "Having a bot in noclip and zero gravity ensures it's smooth" - Crashfort
 		// https://github.com/crashfort/SourceToolAssist/blob/be9218583ee0a8086c817a5bd29101b2a260e5a7/Source/surf_segmentplay.sp#L113
 		// Disabling noclip, makes the bot bug, look into later
-		// SetEntityMoveType(g_BonusBot, MOVETYPE_NOCLIP);
+		SetEntityMoveType(g_BonusBot, MOVETYPE_NOCLIP);
 		SetEntityGravity(g_BonusBot, 0.0);
 
 		PlayRecord(g_BonusBot, 1, 0);
