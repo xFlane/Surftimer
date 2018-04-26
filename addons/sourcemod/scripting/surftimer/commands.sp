@@ -285,6 +285,7 @@ void CreateCommandListeners()
 public Action sm_test(int client, int args)
 {
 	CPrintToChatAll("stage: %d : wrcp: %d", g_Stage[0][client], g_WrcpStage[client]);
+	CPrintToChatAll("zoneid: %d", g_iClientInZone[client][3]);
 	return Plugin_Handled;
 }
 
@@ -983,7 +984,7 @@ public Action Command_ToStage(int client, int args)
 	else
 	{
 		char arg1[3];
-		g_bInStartZone[client] = false;
+		// g_bInStartZone[client] = false;
 		g_bUsingStageTeleport[client] = true;
 		GetCmdArg(1, arg1, sizeof(arg1));
 		int StageId = StringToInt(arg1);
