@@ -186,6 +186,9 @@ public void teleportClient(int client, int zonegroup, int zone, bool stopTime)
 	g_bInJump[client] = false;
 	g_bFirstJump[client] = false;
 	g_bInBhop[client] = false;
+	g_iTicksOnGround[client] = 0;
+	g_bInTelehop[client] = false;
+	g_bNewStage[client] = false;
 
 	// Check for spawn locations
 	int realZone;
@@ -193,6 +196,11 @@ public void teleportClient(int client, int zonegroup, int zone, bool stopTime)
 		realZone = 0;
 	else
 		realZone = zone;
+	
+	if (realZone > 1)
+		g_bInStageZone[client] = true;
+	else if (realZone == 1)
+		g_bInStartZone[client] = true;
 	
 	// Check clients tele side
 	int teleside = g_iTeleSide[client];
@@ -1285,23 +1293,17 @@ public void LimitSpeed(int client)
 
 public void LimitSpeedNew(int client)
 {
-	if (!IsValidClient(client) || !IsPlayerAlive(client) || IsFakeClient(client) || g_bPracticeMode[client] || g_mapZonesTypeCount[g_iClientInZone[client][2]][2] == 0 || g_iClientInZone[client][3] < 0 || g_iClientInZone[client][0] == 2 || g_iClientInZone[client][0] == 4 || g_iClientInZone[client][0] >= 6 || GetConVarInt(g_hLimitSpeedType) == 0)
+	if (!IsValidClient(client) || !IsPlayerAlive(client) || IsFakeClient(client) || g_mapZonesCount <= 0 || g_bPracticeMode[client] || g_mapZonesTypeCount[g_iClientInZone[client][2]][2] == 0 || g_iClientInZone[client][3] < 0 || g_iClientInZone[client][0] == 2 || g_iClientInZone[client][0] == 4 || g_iClientInZone[client][0] >= 6 || GetConVarInt(g_hLimitSpeedType) == 0)
 		return;
 	
 	if (GetConVarInt(g_hLimitSpeedType) == 0 || !g_bInStartZone[client] && !g_bInStageZone[client])
-		return;
-
-	// Check if the map has zones
-	if (g_mapZonesCount <= 0)
 		return;
 	
 	float speedCap = 0.0;
 	speedCap = g_mapZones[g_iClientInZone[client][3]][preSpeed];
 
-	if (GetEntityFlags(client) & FL_ONGROUND || speedCap == 0.0)
-	{
+	if (speedCap <= 0.0)
 		return;
-	}
 
 	float fVel[3];
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", fVel);
@@ -1315,14 +1317,33 @@ public void LimitSpeedNew(int client)
 	 // A scale < 1 indicates a magnitude > limit
 	if (scale < 1.0)
 	{
+		if (GetEntityFlags(client) & FL_ONGROUND)
+		{
+			g_iTicksOnGround[client]++;
+			if (g_iTicksOnGround[client] > 60)
+			{
+				g_bInTelehop[client] = false;
+				g_bNewStage[client] = false;
+				return;
+			}
+		}
+
+		if (g_bInStageZone[client] && g_bNewStage[client])
+		{
+			g_bNewStage[client] = false;
+			return;
+		}
+
 		// Reduce each vector by the appropriate amount
 		float speed = SquareRoot(Pow(fVel[0], 2.0) + Pow(fVel[1], 2.0));
 		fVel[0] = FloatMul(fVel[0], scale);
 		fVel[1] = FloatMul(fVel[1], scale);
 
 		// Impart new velocity onto player
-		if (g_bInBhop[client] || (speedCap == 250.0 && speed >= 500.0))
+		if (g_bInBhop[client] || g_bInTelehop[client])
+		{
 			TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, fVel);
+		}
 	}
 }
 
@@ -2674,7 +2695,7 @@ stock Action PrintSpecMessageAll(int client)
 	Format(szChatRank, 64, "%s", g_pr_chat_coloredrank[client]);
 
 	if (GetConVarBool(g_hPointSystem) && GetConVarBool(g_hColoredNames) && !g_bDbCustomTitleInUse[client])
-		setNameColor(szName, g_rankNameChatColour[client], 64);
+		Format(szName, sizeof(szName), "%s%s", g_pr_namecolour[client], szName);
 	else if (GetConVarBool(g_hPointSystem) && GetConVarBool(g_hColoredNames) && g_bDbCustomTitleInUse[client])
 		setNameColor(szName, g_iCustomColours[client][0], 64);
 	// fluffys

@@ -90,8 +90,11 @@ public Action Event_OnPlayerSpawn(Handle event, const char[] name, bool dontBroa
 		g_bInDuck[client] = false;
 
 		// Set stage to 1 on spawn cause why not
-		g_WrcpStage[client] = 1;
-		g_Stage[0][client] = 1;
+		if (!g_bRespawnPosition[client])
+		{
+			g_WrcpStage[client] = 1;
+			g_Stage[0][client] = 1;
+		}
 
 		if (g_iCurrentStyle[client] == 4) // 4 low gravity
 			SetEntityGravity(client, 0.5);
@@ -620,6 +623,7 @@ public Action CS_OnTerminateRound(float &delay, CSRoundEndReason &reason)
 public Action Event_OnRoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	g_bRoundEnd = true;
+	// UnhookEntityOutput("trigger_teleport", "OnStartTouch", OnTouchTriggerTeleport);
 	return Plugin_Continue;
 }
 
@@ -627,7 +631,7 @@ public void OnPlayerThink(int entity)
 {
 	if (IsValidClient(entity) && !IsFakeClient(entity))
 		LimitSpeedNew(entity);
-		
+
 	SetEntPropEnt(entity, Prop_Send, "m_bSpotted", 0);
 }
 
@@ -660,6 +664,9 @@ public Action Event_OnRoundStart(Handle event, const char[] name, bool dontBroad
 	{
 		SDKHook(iEnt, SDKHook_EndTouch, OnEndTouchGravityTrigger);
 	}
+
+	// Hook trigger_teleport
+	HookEntityOutput("trigger_teleport", "OnStartTouch", OnTouchTriggerTeleport);
 
 	// Hook zones
 	iEnt = -1;
@@ -758,6 +765,16 @@ public Action OnEndTouchGravityTrigger(int entity, int other)
 	{
 		if (!g_bNoClip[other] && GetConVarBool(g_hGravityFix))
 			return Plugin_Handled;
+	}
+	return Plugin_Continue;
+}
+
+public Action OnTouchTriggerTeleport(char[] output, int caller, int activator, float delay)
+{
+	if (IsValidClient(activator) && !IsFakeClient(activator))
+	{
+		g_iTicksOnGround[activator] = 0;
+		g_bInTelehop[activator] = true;
 	}
 	return Plugin_Continue;
 }
@@ -1277,13 +1294,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 // DHooks
 public MRESReturn DHooks_OnTeleport(int client, Handle hParams)
 {
-
 	if (!IsValidClient(client))
 		return MRES_Ignored;
-	
-	// prespeed
-	if (!IsFakeClient(client))
-		g_bInTelehop[client] = true;
 
 	if (g_bPushing[client])
 	{
@@ -1385,6 +1397,10 @@ public Action Event_PlayerJump(Handle event, char[] name, bool dontBroadcast)
 
 		if (GetConVarInt(g_hLimitSpeedType) == 1)
 		{
+			if (!g_bInStartZone[client] && !g_bInStageZone[client])
+				return Plugin_Continue;
+
+			g_iTicksOnGround[client] = 0;
 			int time = GetTime();
 			int cTime = time - g_iLastJump[client];
 			if (!g_bInBhop[client])
@@ -1579,17 +1595,17 @@ public Action Hook_ShotgunShot(const char[] te_name, const int[] players, int nu
 }
 
 // https://forums.alliedmods.net/showthread.php?t=300549
-public Action TeamMenuHook(UserMsg msg_id, Protobuf msg, const int[] players, int playersNum, bool reliable, bool init)
-{
-	char buffermsg[64];
-	PbReadString(msg, "name", buffermsg, sizeof(buffermsg));
+// public Action TeamMenuHook(UserMsg msg_id, Protobuf msg, const int[] players, int playersNum, bool reliable, bool init)
+// {
+// 	char buffermsg[64];
+// 	PbReadString(msg, "name", buffermsg, sizeof(buffermsg));
 
-	if (StrEqual(buffermsg, "team", true))
-	{
-		int client = players[0];
-		int team = GetRandomInt(2, 3);
-		ChangeClientTeam(client, team);
-	}
+// 	if (StrEqual(buffermsg, "team", true))
+// 	{
+// 		int client = players[0];
+// 		int team = GetRandomInt(2, 3);
+// 		ChangeClientTeam(client, team);
+// 	}
 
-	return Plugin_Continue;
-}
+// 	return Plugin_Continue;
+// }

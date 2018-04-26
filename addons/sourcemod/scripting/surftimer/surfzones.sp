@@ -303,6 +303,7 @@ public void StartTouch(int client, int action[3])
 			g_iCurrentCheckpoint[client] = 0;
 			g_Stage[g_iClientInZone[client][2]][client] = 1;
 			g_bInStartZone[client] = true;
+			g_bInStageZone[client] = false;
 			g_iCurrentStyle[client] = g_iInitalStyle[client];
 			lastCheckpoint[g_iClientInZone[client][2]][client] = 1;
 
@@ -355,6 +356,7 @@ public void StartTouch(int client, int action[3])
 		else if (action[0] == 3) // Stage Zone
 		{
 			g_bInStageZone[client] = true;
+			g_bInStartZone[client] = false;
 			g_bInJump[client] = false;
 			g_bInDuck[client] = false;
 			g_KeyCount[client] = 0;
@@ -372,7 +374,8 @@ public void StartTouch(int client, int action[3])
 				// * Practice CPs
 			}
 			else
-			{ // Setting valid to false, in case of checkers
+			{ 
+				// Setting valid to false, in case of checkers
 				g_bValidRun[client] = false;
 
 				// Announcing checkpoint
@@ -381,6 +384,8 @@ public void StartTouch(int client, int action[3])
 					// Make sure the player is not going backwards
 					if ((action[1] + 2) < g_Stage[g_iClientInZone[client][2]][client])
 						g_bWrcpTimeractivated[client] = false;
+					else
+						g_bNewStage[client] = true;
 
 					g_Stage[g_iClientInZone[client][2]][client] = (action[1] + 2);
 
